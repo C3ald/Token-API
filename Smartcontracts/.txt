@@ -1,0 +1,6 @@
+This is where all the info and interaction with the blockchain and smart contracts will go, the programming language for the contracts will go.
+
+
+Smart contracts in this blockchain network will allow you to host websites, applications, and social networks.
+
+the language for smart contracts will be called coin
