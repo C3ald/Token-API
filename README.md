@@ -1,2 +1,2 @@
 # Token
-A python based cryptocurrency/stable coin and blockchain that can be used for smart contracts
+A python based cryptocurrency and blockchain with a similair philosophy as Bitcoin and Monero
