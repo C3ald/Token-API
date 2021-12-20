@@ -453,6 +453,7 @@ async def insert_chain(chain:Blockchain):
 if __name__ == '__main__':
     # hostname = socket.gethostname()
     # IP = socket.gethostbyname(hostname)
+    blockchain.replace_chain()
     uvicorn.run('main:app', host=SERVER_HOST, port=SERVER_PORT, reload=SERVER_RELOAD)
     # ran = run
     # while run == ran:
