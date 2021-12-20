@@ -25,14 +25,6 @@ class Blockchain:
     """ the blockchain class """
 
     def __init__(self):
-        self.chain = [] #stores the blockchain
-        self.old_chain = self.read_data(DataBase=DB) #Checks to see if a chain is already present
-        if len(self.old_chain) > len(self.chain):
-            self.chain = self.old_chain
-            self.transactions = []
-        else:
-            self.transactions = ["Privacy and financial independence are human rights."]
-            self.create_block(proof = 1, previous_hash="0") #helps with block creation
         self.nodes = []
         if len(self.read_data(NODES)) > len(self.nodes):
             self.nodes = self.read_data(NODES)
@@ -41,6 +33,15 @@ class Blockchain:
         self.unconfirmed_transactions = []
         self.new_transactions = []
         self.allnodes = None
+        self.chain = [] #stores the blockchain
+        self.old_chain = self.read_data(DataBase=DB) #Checks to see if a chain is already present
+        if len(self.old_chain) > len(self.chain):
+            self.chain = self.old_chain
+            self.transactions = []
+        else:
+            self.transactions = ["Privacy and financial independence are human rights."]
+            self.create_block(proof = 1, previous_hash="0") #helps with block creation
+
 
 
     def add_data(self, data, DataBase):
@@ -90,8 +91,7 @@ class Blockchain:
         self.transactions = []
         self.chain.append(block)
         self.add_data(data=self.chain, DataBase=DB)
-        if len(self.nodes) != 0:
-            self.post_chain()
+        self.post_chain()
         return block
     
 
