@@ -240,9 +240,7 @@ class Blockchain:
 
 
     #P2p nodes
-    def show_nodes(self):
-        """ This tests to see if there are nodes """
-        return self.nodes 
+
 
 
     def add_node(self, address):

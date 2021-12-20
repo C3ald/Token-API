@@ -314,10 +314,7 @@ async def add_unconfirmed_transaction(transaction: Transaction):
     
 
 # #Peer 2 peer network/decentralized
-@app.get("/show_nodes/", tags=['nodes'])
-async def show_nodes(): 
-    result = blockchain.show_nodes()
-    return {'nodes':result}
+
 
 
 
