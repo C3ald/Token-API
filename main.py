@@ -204,7 +204,8 @@ async def add_transaction(transaction: EncryptedTransaction):
     receiver = transaction.receiver
     sender = str(base64.decodebytes(sender).decode())
     receiver = str(base64.decodebytes(receiver).decode())
-    blockchain.add_non_miner_transaction(sender=sender, receiver=receiver, amount=transaction.amount)
+    result = blockchain.add_non_miner_transaction(sender=sender, receiver=receiver, amount=transaction.amount)
+    return result
     # blockchain.replace_chain()
     # sender_publickey = str(base64.decodebytes(transaction.sender_publickey).decode())
     # # sender_privatekey = str(base64.decodebytes(transaction.sender_privatekey).decode())
