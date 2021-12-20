@@ -147,7 +147,7 @@ class Ring_CT():
 		if length_of_chain > 5:
 			number_of_decoy_addr = 3
 		else:
-			number_of_decoy_addr = random.randint(4,5)**2
+			number_of_decoy_addr = random.randint(4,5)
 		return number_of_decoy_addr
 
 	def shuffle(self, ring_signitures):
