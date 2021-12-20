@@ -23,11 +23,11 @@ class Algs():
 	""" algorithms for the blockchain """
 	def __init__(self):
 		self.difficulty = 0
-		self.fee = 0.00001
+		self.fee = 0.0000001
 		self.list_count = []
 		self.count = str(len(self.list_count))
 		self.new_amount = 0
-		self.amount = 1000
+		self.amount = 100
 
 	
 	def difficulty_increase(self, chain:list, nodes):
@@ -50,8 +50,8 @@ class Algs():
 			test = r.get(f'http://{node}/get_the_chain')
 			if test.status_code == 200:
 				number_of_nodes = number_of_nodes + 1
-		if number_of_nodes != 0 and number_of_nodes % 100 == 0:
-			interval = number_of_nodes / 100
+		if number_of_nodes != 0 and number_of_nodes % 1000 == 0:
+			interval = number_of_nodes / 1000
 			self.amount = self.amount / interval
 		# if len(chain) > 1999:
 		# 	while chain_index != len(chain):
@@ -75,7 +75,7 @@ class Algs():
 
 	def network_fee(self, amount):
 		""" the fee for transactions """
-		self.fee = 0.00001
+		self.fee = 0.0000001
 		self.new_amount = 0
 		# self.fee = amount * self.fee
 		self.new_amount = amount - self.fee
@@ -95,7 +95,7 @@ class Algs():
 		# 		if 0 < self.new_amount - (len(nodes) / 1000):
 		# 			self.new_amount = self.new_amount - (len(nodes) / 1000)
 		# self.amount = self.new_amount
-			new_amount = 1000
+			new_amount = 100
 		# for block in chain:
 		# 	for transaction in block:
 			while i != len(chain):
@@ -104,7 +104,7 @@ class Algs():
 						new_amount = new_amount + self.fee
 				i = i + 1
 		else:
-			new_amount = 1000
+			new_amount = 100
 		self.amount = new_amount
 		return self.amount
 	
