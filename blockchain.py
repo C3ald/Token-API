@@ -41,6 +41,7 @@ class Blockchain:
         else:
             self.transactions = ["Privacy and financial independence are human rights."]
             self.create_block(proof = 1, previous_hash="0") #helps with block creation
+        self.replace_chain()
 
 
 
