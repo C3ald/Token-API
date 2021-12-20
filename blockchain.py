@@ -31,6 +31,7 @@ class Blockchain:
         else:
             self.nodes = []
         self.unconfirmed_transactions = self.read_data(UNconfirmed_transactions)
+        self.unconfirmed_transactions = self.add_data(data=[], DataBase=UNconfirmed_transactions)
         self.new_transactions = []
         self.allnodes = None
         self.chain = [] #stores the blockchain
