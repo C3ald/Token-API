@@ -18,7 +18,7 @@ ring_ct = Ring_CT()
 decoy_transactions = Decoy_addresses()
 DB = TinyDB('db_blockchain.json')
 NODES = TinyDB('nodes.json')
-
+UNconfirmed_transactions = TinyDB('unconfirmed_transactions.json')
 
 
 class Blockchain:
@@ -30,7 +30,7 @@ class Blockchain:
             self.nodes = self.read_data(NODES)
         else:
             self.nodes = []
-        self.unconfirmed_transactions = []
+        self.unconfirmed_transactions = self.read_data(UNconfirmed_transactions)
         self.new_transactions = []
         self.allnodes = None
         self.chain = [] #stores the blockchain
@@ -200,6 +200,7 @@ class Blockchain:
                 'amount': amount
             }
         )
+            
         else:
             for transaction in self.unconfirmed_transactions:
                 
@@ -212,6 +213,7 @@ class Blockchain:
                 #     for transaction in self.transactions:
                 #         r.post(f'https://{node}/add_transaction/', json=transaction)
             self.unconfirmed_transactions = []
+        self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
         previous_block = self.get_prev_block()
         return previous_block['index'] + 1
 
@@ -236,6 +238,7 @@ class Blockchain:
                         full_transaction = {'sender': base64.encodebytes(transaction['sender'].encode()), 'receiver': base64.encodebytes(transaction['receiver'].encode()), 'amount': amount}
                         r.post(f'https://{node}/add_transaction/', json=full_transaction)
             self.unconfirmed_transactions = []
+        self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
         previous_block = self.get_prev_block()
         return previous_block['index'] + 1
 

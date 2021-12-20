@@ -37,7 +37,7 @@ class Algs():
 		# self.list_count = []
 		# self.difficulty = 0
 		# chain_index = 0
-		self.list_count = []
+		self.list_count = ['0']
 		number_of_nodes = 0
 		self.amount = self.amount_change(chain=chain)
 		for block in chain:
