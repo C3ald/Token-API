@@ -118,7 +118,7 @@ class Mining(BaseModel):
 
 class EncryptedTransaction(BaseModel):
     sender_publickey: bytes
-    sender_publicview_key: bytes
+    # sender_publicview_key: bytes
     receiver: bytes
     amount: float    
 #def backgroundmining():
@@ -200,32 +200,37 @@ async def is_valid():
 @app.post("/add_transaction/", tags=['transaction'])
 async def add_transaction(transaction: EncryptedTransaction):
     """ Allows transactions to be added to the chain"""
-    blockchain.replace_chain()
-    sender_publickey = str(base64.decodebytes(transaction.sender_publickey).decode())
-    # sender_privatekey = str(base64.decodebytes(transaction.sender_privatekey).decode())
-    sender_viewkey = str(base64.decodebytes(transaction.sender_publicview_key).decode())
-    receiver = str(base64.decodebytes(transaction.receiver).decode())
-    # sender_receivekey = str(base64.decodebytes(transaction.sender_address))
-    sender_receivekey = primary_addr.make_primary_address(sender_viewkey)
-    # verify = checkbalance.verify_keys(publickey=sender_publickey, privatekey=sender_privatekey)
-    # verify2 = checkbalance.verify_keys(publickey=sender_viewkey, privatekey=sender_privatekey)
-    # if verify == True and verify2 == True:
-    balance = checkbalance.balance_check(primary_address=sender_viewkey, blockchain=blockchain.chain)
-    amount = algs.network_fee(amount=transaction.amount)
-    new_balance = balance['balance'] - amount
-    if new_balance > 0:
-        sender = sender_receivekey
-        receiver = receiver
-        sender_key = create_keys.make_stealth_keys(primary_address=sender)
-        receiver_key = create_keys.make_stealth_keys(primary_address=receiver)
-        amount = transaction.amount
-        blockchain.add_non_miner_transaction(sender=sender_key, receiver=receiver_key, amount=amount)
-        result = 'transaction was successful'
-    else:
-        result = 'invalid balance'
+    sender = transaction.sender_publickey
+    receiver = transaction.receiver
+    sender = str(base64.decodebytes(sender).decode())
+    receiver = str(base64.decodebytes(receiver).decode())
+    blockchain.add_non_miner_transaction(sender=sender, receiver=receiver, amount=transaction.amount)
+    # blockchain.replace_chain()
+    # sender_publickey = str(base64.decodebytes(transaction.sender_publickey).decode())
+    # # sender_privatekey = str(base64.decodebytes(transaction.sender_privatekey).decode())
+    # sender_viewkey = str(base64.decodebytes(transaction.sender_publicview_key).decode())
+    # receiver = str(base64.decodebytes(transaction.receiver).decode())
+    # # sender_receivekey = str(base64.decodebytes(transaction.sender_address))
+    # sender_receivekey = primary_addr.make_primary_address(sender_viewkey)
+    # # verify = checkbalance.verify_keys(publickey=sender_publickey, privatekey=sender_privatekey)
+    # # verify2 = checkbalance.verify_keys(publickey=sender_viewkey, privatekey=sender_privatekey)
+    # # if verify == True and verify2 == True:
+    # balance = checkbalance.balance_check(primary_address=sender_viewkey, blockchain=blockchain.chain)
+    # amount = algs.network_fee(amount=transaction.amount)
+    # new_balance = balance['balance'] - amount
+    # if new_balance > 0:
+    #     sender = sender_receivekey
+    #     receiver = receiver
+    #     sender_key = create_keys.make_stealth_keys(primary_address=sender)
+    #     receiver_key = create_keys.make_stealth_keys(primary_address=receiver)
+    #     amount = transaction.amount
+    #     blockchain.add_non_miner_transaction(sender=sender_key, receiver=receiver_key, amount=amount)
+    #     result = 'transaction was successful'
     # else:
-    #     result = 'invalid keys'
-    return result
+    #     result = 'invalid balance'
+    # # else:
+    # #     result = 'invalid keys'
+    # return result
     # update_chain = blockchain.replace_chain()
     # update_transactions = blockchain.update_transactions()
     # sender_publickey = base64.decodebytes(transaction.sender_publickey)
@@ -271,7 +276,6 @@ async def add_unconfirmed_transaction(transaction: Transaction):
             sender = primary_addr.make_primary_address(public_view=transaction.sender_publicview_key)
             sender_key = create_keys.make_stealth_keys(primary_address=sender)
             receiver_key = create_keys.make_stealth_keys(primary_address=receiver)
-            amount = transaction.amount
             blockchain.add_unconfirmed_transaction(sender=sender_key, receiver=receiver_key, amount=amount)
             result = 'transaction was successful'
         else:

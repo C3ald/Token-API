@@ -212,7 +212,7 @@ class Blockchain:
 
 
     """ to prevent loops in the network when adding transactions """
-    def add_unconfirmed_transaction(self, sender:str, receiver, amount:float, sender_privatekey:str):
+    def add_unconfirmed_transaction(self, sender:str, receiver, amount:float):
         """ This is used to send or exchange currencies """
         if len(self.unconfirmed_transactions) < 5:
             self.unconfirmed_transactions.append(
@@ -228,7 +228,7 @@ class Blockchain:
             if len(self.nodes) > 1:
                 for node in self.nodes:
                     for transaction in self.unconfirmed_transactions:
-                        full_transaction = {'sender': base64.encodebytes(transaction['sender'].encode()), 'receiver': base64.encodebytes(transaction['receiver'].encode()), 'sender_privatekey':base64.encode(sender_privatekey.encode()), 'amount': amount}
+                        full_transaction = {'sender': base64.encodebytes(transaction['sender'].encode()), 'receiver': base64.encodebytes(transaction['receiver'].encode()), 'amount': amount}
                         r.post(f'https://{node}/add_transaction/', json=full_transaction)
             self.unconfirmed_transactions = []
         previous_block = self.get_prev_block()
