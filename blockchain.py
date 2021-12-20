@@ -39,7 +39,7 @@ class Blockchain:
             self.chain = self.old_chain
             self.transactions = []
         else:
-            self.transactions = ["Privacy and financial independence are human rights."]
+            self.transactions = ["Privacy and financial independence from third parties are human rights."]
             self.create_block(proof = 1, previous_hash="0") #helps with block creation
         self.replace_chain()
 
@@ -71,10 +71,10 @@ class Blockchain:
             # decoy = self.add_false_transactions()
             if len(self.chain) > 0:
                 for transaction in self.transactions:
-                    hashed_sender = str(pbkdf2_sha256.hash(transaction['sender']))
-                    hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
-                    hashed_receiver = str(pbkdf2_sha256.hash(transaction['receiver']))
-                    hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
+                    hashed_sender = str(transaction['sender'])
+                    # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
+                    hashed_receiver = str(transaction['receiver'])
+                    # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
                     sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
                     receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
                     amount = transaction['amount']
@@ -174,12 +174,16 @@ class Blockchain:
         return True
 
 
-    def add_miner_transaction(self, sender:str, receiver, amount:float):
+    def add_miner_transaction(self, sender:str, receiver:str, amount:float):
         """ This is used to send or exchange currencies """
+        hashed_sender = str(pbkdf2_sha256.hash(sender))
+        hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
+        hashed_receiver = str(pbkdf2_sha256.hash(receiver))
+        hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
         self.transactions.append(
             {
-                'sender': sender,
-                'receiver': receiver,
+                'sender': hashed_sender,
+                'receiver': hashed_receiver,
                 'amount': amount
             }
         )

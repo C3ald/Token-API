@@ -5,6 +5,7 @@ import base64
 # import math
 # import secrets
 import string
+import requests as r
 # from blockchain import Blockchain
 
 
@@ -23,10 +24,10 @@ class Algs():
 	def __init__(self):
 		self.difficulty = 0
 		self.fee = 0.00001
-		self.list_count = ['0','0','0']
+		self.list_count = []
 		self.count = str(len(self.list_count))
 		self.new_amount = 0
-		self.amount = 1.63
+		self.amount = 1000
 
 	
 	def difficulty_increase(self, chain:list, nodes):
@@ -36,7 +37,21 @@ class Algs():
 		# self.list_count = []
 		# self.difficulty = 0
 		# chain_index = 0
+		self.list_count = []
+		number_of_nodes = 0
 		self.amount = self.amount_change(chain=chain)
+		for block in chain:
+			index = block['index']
+			if index % 20000 == 0 and index != 0:
+				self.amount = self.amount / 2
+				if len(self.list_count) != 9:
+					self.list_count.append('0')
+		for node in nodes:
+			test = r.get(f'http://{node}/get_the_chain')
+			if test.status_code == 200:
+				number_of_nodes = number_of_nodes + 1
+		if number_of_nodes != 0:
+			self.amount = self.amount / number_of_nodes
 		# if len(chain) > 1999:
 		# 	while chain_index != len(chain):
 		# 		if chain[i]['index'] % 2000 == 0:
@@ -69,7 +84,7 @@ class Algs():
 	# def amount_change(self, amount, nodes, chain):
 	def amount_change(self, chain):
 		""" the change in block reward """
-		if len(chain) > 2:
+		if len(chain) > 1:
 			i = 1
 			transaction = chain [i]['data']
 		# self.new_amount = 0
@@ -79,15 +94,16 @@ class Algs():
 		# 		if 0 < self.new_amount - (len(nodes) / 1000):
 		# 			self.new_amount = self.new_amount - (len(nodes) / 1000)
 		# self.amount = self.new_amount
-			new_amount = 1.63
+			new_amount = 1000
 		# for block in chain:
 		# 	for transaction in block:
 			while i != len(chain):
 				for data in transaction:
-					new_amount = new_amount + self.fee
+					if len(transaction) != 1:
+						new_amount = new_amount + self.fee
 				i = i + 1
 		else:
-			new_amount = 1.63
+			new_amount = 1000
 		self.amount = new_amount
 		return self.amount
 	
