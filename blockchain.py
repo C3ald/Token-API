@@ -257,7 +257,7 @@ class Blockchain:
         #     return('invalid ip address/url')
         test = r.get(f'http://{address}/get_the_chain')
         if test.status_code == 200:
-            for node in self.node:
+            for node in self.nodes:
                 json = {'node':address}
                 r.post(f'http://{node}/add_one_node/', json=json)
                 json = {'node':node}
