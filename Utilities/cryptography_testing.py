@@ -52,8 +52,8 @@ class Algs():
 				number_of_nodes = number_of_nodes + 1
 		for x in range(number_of_nodes):
 			if number_of_nodes != 0 and x % 1000 == 0:
-				interval = number_of_nodes / 1000
-				self.amount = self.amount / interval
+				interval = x + 1.001
+		self.amount = self.amount / interval
 		# if len(chain) > 1999:
 		# 	while chain_index != len(chain):
 		# 		if chain[i]['index'] % 2000 == 0:
