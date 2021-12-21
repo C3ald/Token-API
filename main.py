@@ -15,6 +15,7 @@ import asyncio
 import time as t
 import random
 import base64
+from sys import getsizeof
 # from Utilities.cryptography_testing import Make_Keys
 # from Utilities.cryptography_testing import primary_addresses
 # from Utilities.cryptography_testing import Check_Wallet_Balance
@@ -105,7 +106,7 @@ class Passphrase(BaseModel):
 
 
 class Blockchain(BaseModel):
-    blockchain: list
+    block: dict
 
 
 class Recover(BaseModel):
@@ -425,12 +426,15 @@ async def check_balance(wallet:Wallet_public):
     return {'Address': balance['receive address'], 'balance': f'{balance["balance"]}Tokens'}
 
 
-@app.post('/insert_chain', tags=['nodes'])
+@app.post('/insert_block', tags=['nodes'])
 async def insert_chain(chain:Blockchain):
     """ replace the chain if all nodes are down or if node has a 
     firewall preventing get requests from web servers """
-    updated_chain = blockchain.update_chain(new_chain=chain.blockchain)
-    return updated_chain
+    if getsizeof(chain.block) < 1048576 or getsizeof(chain.block) == 1048576:
+        updated_chain = blockchain.update_chain(new_chain=chain.block)
+        return updated_chain
+    else:
+        return 'block is too large!!'
     # if is_valid == True:
     #     blockchain.chain
     #     return chain
