@@ -29,6 +29,7 @@ class Blockchain:
         if len(self.read_data(NODES)) > len(self.nodes):
             self.nodes = self.read_data(NODES)
         else:
+            self.read_data(NODES)
             self.nodes = []
         self.unconfirmed_transactions = self.read_data(UNconfirmed_transactions)
         self.unconfirmed_transactions = self.add_data(data=[], DataBase=UNconfirmed_transactions)
