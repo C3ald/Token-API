@@ -87,8 +87,8 @@ class Algs():
 	def amount_change(self, chain):
 		""" the change in block reward """
 		if len(chain) > 1:
-			i = 1
-			transaction = chain [i]['data']
+			i = -1
+			transaction = chain[i]['data']
 		# self.new_amount = 0
 		# if len(chain) > 19999:
 		# 	if len(chain) % 20000 == 0:
@@ -97,13 +97,16 @@ class Algs():
 		# 			self.new_amount = self.new_amount - (len(nodes) / 1000)
 		# self.amount = self.new_amount
 			new_amount = 100
+			if len(transaction) > 1:
+				for data in transaction:
+					new_amount = new_amount + self.fee
+				new_amount = new_amount - self.fee
 		# for block in chain:
 		# 	for transaction in block:
-			while i != len(chain):
-				for data in transaction:
-					if len(transaction) != 1:
-						new_amount = new_amount + self.fee
-				i = i + 1
+			# while i != len(chain):
+			# 	for data in transaction:
+			# 		if len(transaction) != 1:
+			# 			new_amount = new_amount + self.fee
 		else:
 			new_amount = 100
 		self.amount = new_amount
