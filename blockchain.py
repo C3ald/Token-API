@@ -8,7 +8,7 @@ import requests as r
 import random 
 from passlib.hash import pbkdf2_sha256
 import base64
-from API.Utilities.cryptography_testing import *
+from Utilities.cryptography_testing import *
 from tinydb import TinyDB, Query
 #git add .
 #git commit -m "Message"
