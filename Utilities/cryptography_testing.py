@@ -288,7 +288,7 @@ class Check_Wallet_Balance():
 				transactions = blockchain[i]['data']
 				for transaction in transactions:
 					receivers = transaction['receiver']
-					receiver_signature = transaction['receiver signature']
+					# receiver_signature = transaction['receiver signature']
 					for receiver in receivers:
 						amount = transaction['amount']
 						verify_wallet = self.verify_stealth_keys(receiver, primary_address)
