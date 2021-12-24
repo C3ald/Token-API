@@ -2,13 +2,13 @@ import hashlib
 import datetime
 import json
 from urllib.parse import urlparse
-from uuid import uuid4
+from uuid import uuid1, uuid4
 import requests as r
 # from Utilities.algorithms import Algs
 import random 
 from passlib.hash import pbkdf2_sha256
 import base64
-from Utilities.cryptography_testing import *
+from API.Utilities.cryptography_testing import *
 from tinydb import TinyDB, Query
 #git add .
 #git commit -m "Message"
@@ -31,8 +31,9 @@ class Blockchain:
         else:
             self.read_data(NODES)
             self.nodes = []
-        self.unconfirmed_transactions = self.read_data(UNconfirmed_transactions)
-        self.unconfirmed_transactions = self.add_data(data=[], DataBase=UNconfirmed_transactions)
+        # self.unconfirmed_transactions = self.read_data(UNconfirmed_transactions)
+        # self.unconfirmed_transactions = self.add_data(data=[], DataBase=UNconfirmed_transactions)
+        self.unconfirmed_transactions = []
         self.new_transactions = []
         self.allnodes = None
         self.chain = [] #stores the blockchain
@@ -42,7 +43,7 @@ class Blockchain:
             self.transactions = []
         else:
             self.transactions = ["How's our data?"]
-            self.create_block(proof = 1, previous_hash="0") #helps with block creation
+            self.create_block(proof = 1, previous_hash="0", forger='Network') #helps with block creation
         self.replace_chain()
 
 
@@ -50,7 +51,7 @@ class Blockchain:
     def add_data(self, data, DataBase):
         """ This adds data """
         # data = self.chain
-        print(type(data))
+        # print(type(data))
         DataBase.truncate()
         for item in data:
             DataBase.insert(item)
@@ -66,12 +67,15 @@ class Blockchain:
         self.add_data(data=self.nodes, DataBase=NODES)
         return self.nodes
 
-    def create_block(self, proof, previous_hash):
+    def create_block(self, proof, previous_hash, forger):
         """ Used to make a block """
         if len(self.chain) > 0:
             self.new_transactions = []
+            miner_reward = algs.amount_change(self.chain)
             # decoy = self.add_false_transactions()
             if len(self.chain) > 0:
+                for transaction in self.unconfirmed_transactions:
+                    self.transactions.append(self.verify_transactions(transaction))
                 for transaction in self.transactions:
                     hashed_sender = str(transaction['sender'])
                     # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
@@ -83,6 +87,8 @@ class Blockchain:
                     self.new_transactions.append({'sender': sender_sign, 'receiver':receiver_sign, 'amount':amount})
                 
                 self.transactions = self.new_transactions
+                sender = Decoy_addresses().decoy_keys()['publickey']
+                self.add_miner_transaction(sender=sender, receiver=forger, amount=miner_reward)
 
         block = {
             'index': len(self.chain) + 1,
@@ -120,6 +126,7 @@ class Blockchain:
         new_chain.append(block)
         if len(new_chain) > len(self.chain):
             valid = self.is_chain_valid(chain=new_chain)
+            self.checkTransactions(block)
             if valid == True:
                 self.add_data(data=self.chain)
                 self.chain = new_chain
@@ -132,14 +139,18 @@ class Blockchain:
         new_proof = 1
         check_proof = False
         algs.difficulty_increase(chain=self.chain, nodes=self.nodes)
+        chain = self.chain
         while check_proof is False:
-            
-            hash_op = hashlib.sha256(str(new_proof**2 -
-             previous_proof**2).encode()).hexdigest()
-            if hash_op[:algs.count] == algs.difficulty:
-                check_proof = True
+            if chain == self.chain:
+                hash_op = hashlib.sha256(str(new_proof**2 -
+                previous_proof**2).encode()).hexdigest()
+                if hash_op[:algs.count] == algs.difficulty:
+                    check_proof = True
+                else:
+                    new_proof += 1
             else:
-                new_proof += 1
+                check_proof = False
+                break
         return new_proof 
 
     def add_false_transactions(self):
@@ -184,72 +195,164 @@ class Blockchain:
         hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
         hashed_receiver = str(pbkdf2_sha256.hash(receiver))
         hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-        self.transactions.append(
-            {
-                'sender': hashed_sender,
-                'receiver': hashed_receiver,
-                'amount': amount
-            }
-        )
+        transaction = self.signTransaction(hashed_sender, hashed_receiver)
+        signsender = transaction['signature of sender']
+        signreceiver = transaction['signature of receiver']
+        self.transactions.append({'sender': hashed_sender,'amount': amount, 'receiver':hashed_receiver, 'sender signature': signsender, 'receiver signature': signreceiver, 'id': uuid1().hex})
         previous_block = self.get_prev_block()
         return previous_block['index'] + 1
     
-    def add_non_miner_transaction(self, sender:str, receiver:str, amount:float):
-        """ This is used to send or exchange currencies """
-        if len(self.unconfirmed_transactions) < 5:
-            self.unconfirmed_transactions.append(
-            {
-                'sender': sender,
-                'receiver': receiver,
-                'amount': amount
-            }
-        )
+    # def add_non_miner_transaction(self, sender:str, receiver:str, amount:float):
+    #     """ This is used to send or exchange currencies """
+    #     if len(self.unconfirmed_transactions) < 5:
+    #         self.unconfirmed_transactions.append(
+    #         {
+    #             'sender': sender,
+    #             'receiver': receiver,
+    #             'amount': amount
+    #         }
+    #     )
             
-        else:
-            for transaction in self.unconfirmed_transactions:
-                
+    #     else:
+    #         for transaction in self.unconfirmed_transactions:
 
-                # self.new_transactions.append({'sender': sender_sign, })
-                self.transactions.append(transaction)
-            # self.transactions = self.unconfirmed_transactions
-            # if len(self.nodes) > 1:
-                # for node in self.nodes:
-                #     for transaction in self.transactions:
-                #         r.post(f'https://{node}/add_transaction/', json=transaction)
-            self.unconfirmed_transactions = []
-        self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
-        previous_block = self.get_prev_block()
-        return previous_block['index'] + 1
+    def checkTransactions(self, block):
+        """ checks if transaction is in new block """
+        for transaction in block['data']:
+            verify1 = self.equals(transaction)
+            verify2 = self.signaturecheck(transaction)
+            if verify1 == True and verify2 == True:
+                self.unconfirmed_transactions.pop(transaction)
+        #         return True
+        # return False
+
+
+
+    def equals(self, transaction):
+        """ checks for repeat ids """
+        for uncontransaction in self.unconfirmed_transactions:
+            transactionID = transaction.id
+            unconfirmedtransactionID = uncontransaction.id
+            if transactionID == unconfirmedtransactionID:
+                return True
+        return False
+
+    def signaturecheck(self, transaction):
+        for uncontransaction in self.unconfirmed_transactions:
+            transactionsignsender = transaction['signature of sender']
+            unconsignature = uncontransaction['signature of sender']
+            if transactionsignsender == unconsignature:
+                return True
+        return False
+
+
+
+
+    # def checkIfTransactionIsInBlockSenderSignature(self, block):
+    #     """ checks if transaction is already in block to prevent double spending """
+    #     for transaction in self.unconfirmed_transactions:
+    #         blockTransactions = block['data']
+    #         for blockTransaction in blockTransactions:
+    #             address = transaction['sender view key']
+    #             primaddress = primary_addresses().make_primary_address(address)
+    #             verifykey = Check_Wallet_Balance().verify_stealth_keys(stealth_key=blockTransaction, primary_address=primaddress)
+    #             if verifykey != True:
+    #                 return False
+
+
+    #             self.transactions.append(transaction)
+    #         self.unconfirmed_transactions = []
+    #     self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
+    #     previous_block = self.get_prev_block()
+    #     return previous_block['index'] + 1
+    def broadcast_transaction(self, transaction):
+        """ sends list of unconfirmed transactions to all nodes """
+        for node in self.nodes:
+            url = f'http://{node}/add_transaction/'
+            json = {'transaction': transaction}
+            r.post(url, json)
+
 
 
     """ to prevent loops in the network when adding transactions """
-    def add_unconfirmed_transaction(self, sender:str, receiver, amount:float):
+    def add_unconfirmed_transaction(self, senderprivatekey:str, senderviewkey:str, sendersendpublickey, receiver, amount:float):
         """ This is used to send or exchange currencies """
-        if len(self.unconfirmed_transactions) < 5:
-            self.unconfirmed_transactions.append(
-            {
-                'sender': sender,
-                'receiver': receiver,
-                'amount': amount
-            }
-        )
-        else:
-            # for transaction in self.unconfirmed_transactions:
-            # self.transactions = self.unconfirmed_transactions
-            if len(self.nodes) > 1:
-                for node in self.nodes:
-                    for transaction in self.unconfirmed_transactions:
-                        full_transaction = {'sender': base64.encodebytes(transaction['sender'].encode()), 'receiver': base64.encodebytes(transaction['receiver'].encode()), 'amount': amount}
-                        r.post(f'https://{node}/add_transaction/', json=full_transaction)
-            self.unconfirmed_transactions = []
-        self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
-        previous_block = self.get_prev_block()
-        return previous_block['index'] + 1
+        addressofsender = primary_addresses().make_primary_address(senderviewkey)
+        signature = self.signTransaction(addressofsender, receiver)
+        signatureofsender = signature['signature of sender']
+        # signatureofreceiver = signature['signature of receiver']
+        unconfirmedTransaction = {
+            'sender send publickey':sendersendpublickey, 
+        'sender send privatekey': senderprivatekey, 
+        'sender address': senderviewkey, 
+        'receiver': receiver,
+        'amount': amount,
+        'signature of sender': signatureofsender,
+        'id': uuid1().hex
+        }
+        self.unconfirmed_transactions.append(unconfirmedTransaction)
+        self.unconfirmed_transactions = set(self,unconfirmedTransaction)
+        self.add_unconfirmed_transaction = list(self.unconfirmed_transactions)
+        return unconfirmedTransaction
+
+        # if len(self.unconfirmed_transactions) < 5:
+        #     self.unconfirmed_transactions.append(
+        #     {
+        #         'sender': sender,
+        #         'receiver': receiver,
+        #         'amount': amount
+        #     }
+        # )
+        # else:
+        #     if len(self.nodes) > 1:
+        #         for node in self.nodes:
+        #             for transaction in self.unconfirmed_transactions:
+        #                 full_transaction = {'sender': base64.encodebytes(transaction['sender'].encode()), 'receiver': base64.encodebytes(transaction['receiver'].encode()), 'amount': amount}
+        #                 r.post(f'https://{node}/add_transaction/', json=full_transaction)
+        #     self.unconfirmed_transactions = []
+        # self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
+        # previous_block = self.get_prev_block()
+        # return previous_block['index'] + 1
 
 
 
+    def verify_transactions(self, transaction):
+        """ verifies transactions on the blockchain """
+        senderSendPublickey = transaction['sender send publickey']
+        senderSendPrivatekey = transaction['sender send privatekey']
+        senderviewkey = transaction['sender address']
+        receiver = transaction['receiver']
+        amount = transaction['amount']
+        verify1 = Check_Wallet_Balance().verify_keys(publickey=senderSendPublickey, privatekey=senderSendPrivatekey)
+        verify2 = Check_Wallet_Balance().verify_keys(publickey=senderviewkey, privatekey=senderSendPrivatekey)
+        address = primary_addresses().make_primary_address(senderviewkey)
+        balance = Check_Wallet_Balance().balance_check(public_view_key=senderviewkey, blockchain=self.chain)
+        balance = balance['balance']
+        newBalance = balance - amount
+        if verify1 == True and verify2 == True and newBalance >= 0:
+            hashed_sender = str(pbkdf2_sha256.hash(address))
+            hashed_receiver = str(pbkdf2_sha256.hash(receiver))
+            senderSign = transaction['signature of sender']
+            # receiverSign = transaction['signature of receiver']
+            verifiedTransaction = {'sender': hashed_sender, 'amount': amount, 'receiver': hashed_receiver, 'sender signature': senderSign}
+            return verifiedTransaction
 
 
+    def signTransaction(self, sender:str):
+        """ signs transactions """
+        salt = b'\xef\x94\x06r\x05\xb6M\xa0\x85\x9e\x17k\x8a;v\xa7\x91v\x19l!\xf6&vo\xd1l\xe1X\x05\xe7\x98'
+        encodedSender = bytes(sender.encode())
+        # encodedReceiver = bytes(receiver.encode())
+        hashedsender = hashlib.scrypt(encodedSender, salt=salt, n=4, r=7, p=10).hex()
+        # hashedreceiver = hashlib.scrypt(encodedReceiver, salt=salt, n=4, r=7, p=10).hex()
+        hashedsender = hashlib.sha256(hashedsender).hexdigest()
+        # hashedreceiver = hashlib.sha256(hashedreceiver).hexdigest()
+        shaSender = str(pbkdf2_sha256.hash(hashedsender))
+        # shaReceiver = str(pbkdf2_sha256.hash(hashedreceiver))
+        shaSender = shaSender.replace('$pbkdf2-sha256$29000$', '')
+        # shaReceiver = shaReceiver.replace('$pbkdf2-sha256$29000$', '')
+        signatures = {'signature of sender': shaSender}
+        return signatures
 
     #P2p nodes
 
@@ -257,15 +360,6 @@ class Blockchain:
 
     def add_node(self, address):
         """ This method adds a node to the network """
-        # test = r.get(f'http://{address}/')
-        # parsed_url = address
-        # if test.status_code == 200:
-        #     self.nodes.append(parsed_url)
-        #     self.nodes = set(self.nodes)
-        #     self.nodes = list(self.nodes)
-        #     print(self.nodes)
-        # else:
-        #     return('invalid ip address/url')
         test = r.get(f'http://{address}/get_the_chain')
         if test.status_code == 200:
             for node in self.nodes:
@@ -282,7 +376,6 @@ class Blockchain:
         else:
             return {'message': 'invalid node address!'}
 
-        #algorithm for p2p
         """
         Get the chain and validity of the chain among the nodes
         Find the blockchain with the greatest length and replace the other chains
@@ -301,8 +394,6 @@ class Blockchain:
                 print(f'https://{node}/get_the_chain')
                 response = r.get(f'https://{node}/get_the_chain')
                 if response.status_code==200:
-                    # length = json.loads(response.text)
-                    # length = length['length']
                     length = response.json()['length']
                     chain = response.json()['blockchain']
                     if length > max_length and self.is_chain_valid(chain=chain):

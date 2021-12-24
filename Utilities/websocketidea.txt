@@ -1,0 +1,4 @@
+Grab the information from the blockchain
+Send data to Dashboard
+Use the .post_chain method within the blockchain
+Use FastAPI-Signals to fire off a signal when the blockchain is updated- https://github.com/henshalb/fastapi-signals?ref=pythonawesome.com

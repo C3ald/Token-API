@@ -1,7 +1,7 @@
 from starlette.responses import Response
 from passlib.hash import pbkdf2_sha256
 from starlette.websockets import WebSocketDisconnect
-from blockchain import Blockchain
+from API.blockchain import Blockchain
 # from wallet import Wallet
 from fastapi import FastAPI, WebSocket
 import uvicorn
@@ -21,7 +21,8 @@ from sys import getsizeof
 # from Utilities.cryptography_testing import Check_Wallet_Balance
 # from Utilities.cryptography_testing import Ring_CT
 # from Utilities.cryptography_testing import Decoy_addresses
-from Utilities.cryptography_testing import *
+from API.Utilities.cryptography_testing import *
+from fastapi_signals import *
 ring_ct = Ring_CT()
 checkbalance = Check_Wallet_Balance()
 create_keys = Make_Keys()
@@ -75,24 +76,18 @@ class Url(BaseModel):
 
 app = FastAPI(title=SERVER_NAME, openapi_tags=tags_metadata, description=DESCRIPTION)
 
-templates = Jinja2Templates(directory="templates/") #Added templates
+templates = Jinja2Templates(directory="templates/")
 
 blockchain = Blockchain()
-# wallets = Wallet()
+
 
 class Transaction(BaseModel):
-    sender_publickey: str
-    sender_privatekey: str
-    sender_publicview_key: str
+    sender_public_send_key: str
+    sender_private_send_key: str
+    sender_view_key: str
     receiver: str
     amount: float
 
-
-# class ConTransaction(BaseModel):
-#     sender_publickey: bytes
-#     sender_privatekey: bytes
-#     receiver: bytes
-#     amount: float
 
 class Walletkey(BaseModel):
     publickey: str
@@ -119,30 +114,8 @@ class Mining(BaseModel):
 
 class EncryptedTransaction(BaseModel):
     sender_publickey: bytes
-    # sender_publicview_key: bytes
     receiver: bytes
     amount: float    
-#def backgroundmining():
- #   """ Mines a block in the background """
-  # prev_block = blockchain.get_prev_block()
-    # previous proof
-    #prev_proof = prev_block['proof']
-    # proof
-    #proof = blockchain.proof_of_work(previous_proof=prev_proof)
-    # previous hash
-    #prev_hash = blockchain.hash(block=prev_block)
-    # add data
-    #transaction = blockchain.add_transaction(sender='Network', reciver='You', amount='0.8')
-    # create block
-    #block = blockchain.create_block(proof=proof, previous_hash=prev_hash, data=transaction)
-    #return blockchain.chain[-1]
-
-
-# @app.get("/")
-# async def index():
-#     """ This returns the homepage """
-#     return {"Message": "Hello World!", "is_valid": True}
-#     #return templates.TemplateResponse('index.html', context={'request': 1234}, status_code=200)
 
 @app.get('/')
 async def index():
@@ -161,10 +134,7 @@ async def get_the_chain():
 @app.post("/mining", tags=['mining'])
 async def mine(keys:Mining):
     """ This allows you to mine blocks """
-    # update_chain = blockchain.replace_chain()
-    # valid = wallets.verify_wallet(publickey=keys.publickey, privatekey=keys.privatekey)
-    # if valid == True:
-        # Previous Block
+        # get previous block
     prev_block = blockchain.get_prev_block()
         # previous proof
     prev_proof = prev_block['proof']
@@ -175,12 +145,9 @@ async def mine(keys:Mining):
         # add data
     amount = algs.amount_change(chain=blockchain.chain)
         # stealth_key = pbkdf2_sha256.hash(str(keys.publickey))
-    sender = decoy_addresses.decoy_keys()['publickey']
-    transaction = blockchain.add_miner_transaction(sender=sender, receiver=keys.address, amount=amount)
-        #decoy transactions
     # decoy = decoy_addresses.decoy_transactions(amount)
         # create block
-    create_block = blockchain.create_block(proof=proof, previous_hash=prev_hash)
+    blockchain.create_block(proof=proof, previous_hash=prev_hash, forger=keys.address)
         #returns the last block in the chain
     return {'message': blockchain.chain[-1]}
     # else:
@@ -199,65 +166,22 @@ async def is_valid():
 
 
 @app.post("/add_transaction/", tags=['transaction'])
-async def add_transaction(transaction: EncryptedTransaction):
-    """ Allows transactions to be added to the chain"""
-    sender = transaction.sender_publickey
+async def add_transaction(transaction: Transaction):
+    """ Allows transactions to be added to the chain from nodes"""
+    senderpublicsendkey = transaction.sender_public_send_key
+    senderprivatesendkey = transaction.sender_private_send_key
+    senderviewkey = transaction.sender_view_key
     receiver = transaction.receiver
-    sender = str(base64.decodebytes(sender).decode())
-    receiver = str(base64.decodebytes(receiver).decode())
-    result = blockchain.add_non_miner_transaction(sender=sender, receiver=receiver, amount=transaction.amount)
+    amount = transaction.amount
+    new_transaction = blockchain.add_unconfirmed_transaction(senderprivatekey=senderprivatesendkey, 
+    sendersendpublickey=senderpublicsendkey, 
+    receiver=receiver, 
+    senderviewkey=senderviewkey, 
+    amount=amount)
+    blockchain.broadcast_transaction(transaction=new_transaction)
+    result = 'transaction has been added and is awaiting verification'
     return result
-    # blockchain.replace_chain()
-    # sender_publickey = str(base64.decodebytes(transaction.sender_publickey).decode())
-    # # sender_privatekey = str(base64.decodebytes(transaction.sender_privatekey).decode())
-    # sender_viewkey = str(base64.decodebytes(transaction.sender_publicview_key).decode())
-    # receiver = str(base64.decodebytes(transaction.receiver).decode())
-    # # sender_receivekey = str(base64.decodebytes(transaction.sender_address))
-    # sender_receivekey = primary_addr.make_primary_address(sender_viewkey)
-    # # verify = checkbalance.verify_keys(publickey=sender_publickey, privatekey=sender_privatekey)
-    # # verify2 = checkbalance.verify_keys(publickey=sender_viewkey, privatekey=sender_privatekey)
-    # # if verify == True and verify2 == True:
-    # balance = checkbalance.balance_check(primary_address=sender_viewkey, blockchain=blockchain.chain)
-    # amount = algs.network_fee(amount=transaction.amount)
-    # new_balance = balance['balance'] - amount
-    # if new_balance > 0:
-    #     sender = sender_receivekey
-    #     receiver = receiver
-    #     sender_key = create_keys.make_stealth_keys(primary_address=sender)
-    #     receiver_key = create_keys.make_stealth_keys(primary_address=receiver)
-    #     amount = transaction.amount
-    #     blockchain.add_non_miner_transaction(sender=sender_key, receiver=receiver_key, amount=amount)
-    #     result = 'transaction was successful'
-    # else:
-    #     result = 'invalid balance'
-    # # else:
-    # #     result = 'invalid keys'
-    # return result
-    # update_chain = blockchain.replace_chain()
-    # update_transactions = blockchain.update_transactions()
-    # sender_publickey = base64.decodebytes(transaction.sender_publickey)
-    # sender_privatekey = base64.decodebytes(transaction.sender_privatekey)
-    # receiver = base64.decodebytes(transaction.receiver)
-    # sender_publickey = sender_publickey.decode()
-    # sender_privatekey = sender_privatekey.decode()
-    # receiver = receiver.decode()
-    # verify = wallets.verify_wallet(publickey=sender_publickey, privatekey=sender_privatekey)
-    # if verify == True:
-    #     wallets.checkbalance(chain=blockchain.chain, viewkey=sender_privatekey)
-    #     balance_check = wallets.balance
-    #     algs.network_fee(amount=transaction.amount)
-    #     amount = algs.amount
-    #     balance = balance_check - amount
-    #     if balance > 0:
-    #         sender = pbkdf2_sha256.hash(transaction.sender_publickey)
-    #         receiver = pbkdf2_sha256.hash(transaction.receiver)
-    #         result = blockchain.add_non_miner_transaction(sender=sender, receiver=receiver, amount=amount)
-    #         # decoy = decoy_transactions(amount_sent=amount)
-    #     else:
-    #         result = "Not enough Tokens"
-    #     return result
-    # else:
-    #     return "invalid wallet or response"
+
 
 
 
@@ -267,54 +191,22 @@ async def add_transaction(transaction: EncryptedTransaction):
 @app.post('/add_unconfirmed_transaction', tags=['transaction'])
 async def add_unconfirmed_transaction(transaction: Transaction):
     """ broadcasts transactions to all nodes to be verified by miners"""
-    verify = checkbalance.verify_keys(publickey=transaction.sender_publickey, privatekey=transaction.sender_privatekey)
-    verify2 = checkbalance.verify_keys(publickey=transaction.sender_publicview_key, privatekey=transaction.sender_privatekey)
-    if verify == True and verify2 == True:
-        balance = checkbalance.balance_check(primary_address=transaction.sender_publicview_key, blockchain=blockchain.chain)
-        amount = algs.network_fee(amount=transaction.amount)
-        new_balance = balance ['balance']- amount
-        if new_balance > 0:
-            receiver = transaction.receiver
-            sender = primary_addr.make_primary_address(public_view=transaction.sender_publicview_key)
-            sender_key = create_keys.make_stealth_keys(primary_address=sender)
-            receiver_key = create_keys.make_stealth_keys(primary_address=receiver)
-            blockchain.add_unconfirmed_transaction(sender=sender_key, receiver=receiver_key, amount=amount)
-            result = 'transaction was successful'
-        else:
-            result = 'invalid balance'
-    else:
-        result = 'invalid keys'
+    senderpublicsendkey = transaction.sender_public_send_key
+    senderprivatesendkey = transaction.sender_private_send_key
+    senderviewkey = transaction.sender_view_key
+    receiver = transaction.receiver
+    amount = transaction.amount
+    new_transaction = blockchain.add_unconfirmed_transaction(senderprivatekey=senderprivatesendkey, 
+    sendersendpublickey=senderpublicsendkey, 
+    receiver=receiver, 
+    senderviewkey=senderviewkey, 
+    amount=amount)
+    blockchain.broadcast_transaction(transaction=new_transaction)
+    result = 'transaction has been added and is awaiting verification'
     return result
-    # if verify == True:
-    #     wallets.checkbalance(chain=blockchain.chain, viewkey=transaction.sender_privatekey)
-    #     balance_check = wallets.balance
-    #     algs.network_fee(amount=transaction.amount)
-    #     amount = algs.amount
-    #     balance = balance_check - amount
-    #     if balance > 0:
-    #         # sender = pbkdf2_sha256.hash(transaction.sender_publickey)
-    #         # receiver = pbkdf2_sha256.hash(transaction.receiver)
-    #         result = blockchain.add_unconfirmed_transaction(sender=transaction.sender_publickey, receiver=transaction.receiver, amount=amount, sender_privatekey=transaction.sender_privatekey)
-    #         # decoy = decoy_transactions(amount_sent=amount)
-    #     else:
-    #         result = "Not enough Tokens"
-    #     return result
-    # else:
-    #     return "invalid wallet or response"
 
 """ Wallets should be made offline. """
-# @app.get('/create_keys', tags=['wallet'])
-# async def create_keys():
-#     """ Makes a public and private key """
-#     wallets.make_wallet()
-#     # wallets.generate_ecc_keys
-#     result = {"publickey": wallets.publickey,"privatekey": wallets.privatekey,'phrase': wallets.phrase,"message": "do not share your private key or your passphrase!!!"}
-#     # print(wallets.result)
-#     return result
 
-    
-
-# #Peer 2 peer network/decentralized
 
 
 
@@ -335,49 +227,41 @@ async def add_one_node(url:Url):
 	item = url.node
 	blockchain.update_nodes(node=item)
 	return item
-    # if wallets.privatekey != 0:
-    #     for item in node:
-    #         for item in item[1]:
-    #             blockchain.add_node(item) 
-    #             transaction = blockchain.add_transaction(sender='Network', receiver=wallets.publickey, amount=30)
-    #             result = blockchain.show_nodes(), transaction
-    #             return result
-    # else:
-    #     return "no wallet is detected"
-    #nodes = blockchain.show_nodes()
-    #return {"message": f"the node {node.node} has been added", "data": {"count": len(nodes), 'nodes': nodes}}
+
 
 
 
 @app.get("/replace_chain", tags=['nodes'])
 async def replace_chain():
     """ replaces the current chain with the most recent and longest chain """
-    # use the replace chain method to see if the block is valid
     blockchain.replace_chain()
     blockchain.is_chain_valid(chain=blockchain.chain)
     return{'message': 'chain has been updated and is valid', 
            'longest chain': blockchain.chain}
-    #check to see if the chain needs to be replaced
-    #check if the chain is correct
 
-# @app.post("/rsa_wallet")
-# async def rsa_wallet(passhrase: Passphrase):
-#     """ This makes the rsa wallet """
-#     wallet = rsa_Wallet(passphrase=passhrase)
-#     result = wallet.generate_rsa_keys()
-#     print(type(result))
-#     return result
+
+
+@app.websocket('/dashboard')
+async def dashboard(websocket: WebSocket):
+    """ P2p Dashboard """
+    await websocket.accept()
+    # block = blockchain.chain
+    # websocket.send_json(block)
+    while True:
+        block = blockchain.chain
+        await websocket.send_text(f'Message: {block}')
+        await asyncio.sleep(10)
+
 
 
 @app.websocket("/ws")
 async def dashboard_endpoint(websocket: WebSocket):
     """ This shows real time data for nodes"""
-    # update_chain = blockchain.replace_chain()
     await websocket.accept()
     message = None
     while True:
         try:
-        # await asyncio.sleep(0.1)
+        
             if message != blockchain.chain:
                 message = blockchain.chain
                 await websocket.send_json(message)
@@ -386,12 +270,11 @@ async def dashboard_endpoint(websocket: WebSocket):
             else:
                 pass
         except Exception as e:
-            break
-        print('client disconnected')
-    # if False:
-    #     websocket.close()
-    # # WebSocketDisconnect()
-    # print("client disconnected")
+            pass
+        break
+    print('client disconnected')
+
+
 @app.websocket("/nodes")
 async def dashboard_endpoint(websocket: WebSocket):
     """ This shows real time data of each node, this should be used for detecting new nodes in the network or helping with automating adding nodes"""
@@ -407,8 +290,9 @@ async def dashboard_endpoint(websocket: WebSocket):
             else:
                 pass
         except Exception as e:
-            break
-        print('client disconnected')
+            pass
+        break
+    print('client disconnected')
 
     
 

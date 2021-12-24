@@ -1,0 +1,32 @@
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <ul id='messages'>
+        </ul>
+	<table>
+		<tr>
+			<th>Blockchain</th>
+		</tr>
+	</table>
+<script>
+        var ws = new WebSocket("ws://localhost:8000/dashboard");
+        
+        ws.onopen = function (event){
+                ws.send("hello from client");
+        };
+    
+    ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+    };
+</script>
+    </body>
+</html>
+

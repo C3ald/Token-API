@@ -1,9 +1,9 @@
-class Algs():
+class Algs:
 	""" algorithms for the blockchain """
 	def __init__(self):
 		self.difficulty = 0
 		self.fee = 0.00001
-		self.list_count = ['0','0','0']
+		self.list_count = ['0','0','0','0','0','0']
 		self.count = str(len(self.list_count))
 		self.new_amount = 0
 		self.amount = 1.63
@@ -51,7 +51,7 @@ class Algs():
 		""" the change in block reward """
 		if len(chain) > 2:
 			i = 1
-			transaction = chain [i]['data']
+			transaction = chain [i]['transaction']
 		# self.new_amount = 0
 		# if len(chain) > 19999:
 		# 	if len(chain) % 20000 == 0:
@@ -71,5 +71,3 @@ class Algs():
 		self.amount = new_amount
 		return self.amount
 	
-if __name__ == '__main__':
-	Algs()
