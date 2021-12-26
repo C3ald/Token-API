@@ -388,7 +388,7 @@ class Check_Wallet_Balance():
 		# full_privatekey = '$pbkdf2-sha256$29000$'+privatekey
 		try:
 			verify = pbkdf2_sha256.verify(privatekey, full_publickey)
-		except ValueError:
+		except ValueError or TypeError or KeyError or EncodingWarning:
 			verify = False
 		return verify
 
