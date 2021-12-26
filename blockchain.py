@@ -362,8 +362,8 @@ class Blockchain:
             if verify3 == False:
                 return verifiedTransaction
             else:
-                verifiedTransaction = {'sender': hashed_sender, 'amount': 0.0, 'receiver': hashed_receiver, 'sender signature': senderSign, 'id': transactionID, 'timestamp':timestamp}
-                return verifiedTransaction
+                # verifiedTransaction = {'sender': hashed_sender, 'amount': 0.0, 'receiver': hashed_receiver, 'sender signature': senderSign, 'id': transactionID, 'timestamp':timestamp}
+                self.removeTransaction(transaction)
         else:
             self.removeTransaction(transaction)
 
