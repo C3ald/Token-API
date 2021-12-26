@@ -1,7 +1,7 @@
 from starlette.responses import Response
 from passlib.hash import pbkdf2_sha256
 from starlette.websockets import WebSocketDisconnect
-from API.blockchain import Blockchain
+from blockchain import Blockchain
 # from wallet import Wallet
 from fastapi import FastAPI, WebSocket
 import uvicorn
@@ -21,7 +21,7 @@ from sys import getsizeof
 # from Utilities.cryptography_testing import Check_Wallet_Balance
 # from Utilities.cryptography_testing import Ring_CT
 # from Utilities.cryptography_testing import Decoy_addresses
-from API.Utilities.cryptography_testing import *
+from Utilities.cryptography_testing import *
 from fastapi_signals import *
 ring_ct = Ring_CT()
 checkbalance = Check_Wallet_Balance()
