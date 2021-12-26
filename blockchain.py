@@ -1,5 +1,6 @@
 import hashlib
 import datetime
+import time
 import json
 from urllib.parse import urlparse
 from uuid import uuid1, uuid4
@@ -8,7 +9,7 @@ import requests as r
 import random 
 from passlib.hash import pbkdf2_sha256
 import base64
-from Utilities.cryptography_testing import *
+from API.Utilities.cryptography_testing import *
 from tinydb import TinyDB, Query
 #git add .
 #git commit -m "Message"
@@ -19,7 +20,7 @@ decoy_transactions = Decoy_addresses()
 DB = TinyDB('db_blockchain.json')
 NODES = TinyDB('nodes.json')
 UNconfirmed_transactions = TinyDB('unconfirmed_transactions.json')
-
+signatures = Signatures()
 
 class Blockchain:
     """ the blockchain class """
@@ -80,11 +81,15 @@ class Blockchain:
                     hashed_sender = str(transaction['sender'])
                     # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
                     hashed_receiver = str(transaction['receiver'])
+                    signature = str(transaction['sender signature'])
+                    transactionid = str(transaction['id'])
+                    timestamp = str(transaction['timestamp'])
                     # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
                     sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
                     receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
                     amount = transaction['amount']
-                    self.new_transactions.append({'sender': sender_sign, 'receiver':receiver_sign, 'amount':amount})
+                    new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
+                    self.new_transactions.append(new_transaction)
                 
                 self.transactions = self.new_transactions
                 sender = Decoy_addresses().decoy_keys()['publickey']
@@ -153,9 +158,10 @@ class Blockchain:
                 break
         return new_proof 
 
-    def add_false_transactions(self):
+    def add_false_transactions(self, transaction):
         """ Adds fake transactions """
         transactions = []
+        transactions.append(transaction)
         decoy_transact = decoy_transactions.decoy_transactions(transactions=transactions)
         for decoy in decoy_transact:
             transactions.append(decoy)   
@@ -195,10 +201,16 @@ class Blockchain:
         hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
         hashed_receiver = str(pbkdf2_sha256.hash(receiver))
         hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-        transaction = self.signTransaction(hashed_sender, hashed_receiver)
+        senders = ring_ct.make_ring_sign(hashed_sender)
+        receivers = ring_ct.make_ring_sign(hashed_receiver)
+        transactionID = uuid1().hex
+        timestamp = time.time()
+        transactionforsigning = {'sender': senders, 'amount': amount, 'receiver': receivers, 'id': transactionID, 'timestamp': timestamp}
+        transaction = self.signTransaction(transactionforsigning)
         signsender = transaction['signature of sender']
-        signreceiver = transaction['signature of receiver']
-        self.transactions.append({'sender': hashed_sender,'amount': amount, 'receiver':hashed_receiver, 'sender signature': signsender, 'receiver signature': signreceiver, 'id': uuid1().hex})
+        # signreceiver = transaction['signature of receiver']
+        minertransaction = {'sender': senders,'amount': amount, 'receiver':receivers, 'sender signature': signsender, 'id': transactionID, 'timestamp': timestamp}
+        self.transactions.append(minertransaction)
         previous_block = self.get_prev_block()
         return previous_block['index'] + 1
     
@@ -226,25 +238,33 @@ class Blockchain:
         #         return True
         # return False
 
+    def doubleSpendCheck(self, transaction):
+        """ checks for double spending """
+        verify = self.equals(transaction)
+        verify2 = self.timeStampCheck(transaction)
+        if verify == True or verify2 == True:
+            return True
+        return False
+
 
 
     def equals(self, transaction):
         """ checks for repeat ids """
         for uncontransaction in self.unconfirmed_transactions:
-            transactionID = transaction.id
-            unconfirmedtransactionID = uncontransaction.id
+            transactionID = transaction['id']
+            unconfirmedtransactionID = uncontransaction['id']
             if transactionID == unconfirmedtransactionID:
                 return True
         return False
 
-    def signaturecheck(self, transaction):
+    def timeStampCheck(self, transaction):
         for uncontransaction in self.unconfirmed_transactions:
-            transactionsignsender = transaction['signature of sender']
-            unconsignature = uncontransaction['signature of sender']
-            if transactionsignsender == unconsignature:
+            unconfirmedtimestamp = uncontransaction['timestamp']
+            transactiontimestamp = transaction['timestamp']
+            if unconfirmedtimestamp == transactiontimestamp:
                 return True
         return False
-
+            
 
 
 
@@ -277,9 +297,9 @@ class Blockchain:
     """ to prevent loops in the network when adding transactions """
     def add_unconfirmed_transaction(self, senderprivatekey:str, senderviewkey:str, sendersendpublickey, receiver, amount:float):
         """ This is used to send or exchange currencies """
-        addressofsender = primary_addresses().make_primary_address(senderviewkey)
-        signature = self.signTransaction(addressofsender, receiver)
-        signatureofsender = signature['signature of sender']
+        # addressofsender = primary_addresses().make_primary_address(senderviewkey)
+        # signature = self.signTransaction(addressofsender, receiver)
+        # signatureofsender = signature['signature of sender']
         # signatureofreceiver = signature['signature of receiver']
         unconfirmedTransaction = {
             'sender send publickey':sendersendpublickey, 
@@ -287,8 +307,8 @@ class Blockchain:
         'sender address': senderviewkey, 
         'receiver': receiver,
         'amount': amount,
-        'signature of sender': signatureofsender,
-        'id': uuid1().hex
+        'id': uuid1(),
+        'timestamp': time.time()
         }
         self.unconfirmed_transactions.append(unconfirmedTransaction)
         self.unconfirmed_transactions = set(self,unconfirmedTransaction)
@@ -323,6 +343,8 @@ class Blockchain:
         senderviewkey = transaction['sender address']
         receiver = transaction['receiver']
         amount = transaction['amount']
+        transactionID = transaction['id']
+        timestamp = transaction['timestamp']
         verify1 = Check_Wallet_Balance().verify_keys(publickey=senderSendPublickey, privatekey=senderSendPrivatekey)
         verify2 = Check_Wallet_Balance().verify_keys(publickey=senderviewkey, privatekey=senderSendPrivatekey)
         address = primary_addresses().make_primary_address(senderviewkey)
@@ -332,27 +354,21 @@ class Blockchain:
         if verify1 == True and verify2 == True and newBalance >= 0:
             hashed_sender = str(pbkdf2_sha256.hash(address))
             hashed_receiver = str(pbkdf2_sha256.hash(receiver))
-            senderSign = transaction['signature of sender']
+            senderSign = self.signTransaction(transaction)
             # receiverSign = transaction['signature of receiver']
-            verifiedTransaction = {'sender': hashed_sender, 'amount': amount, 'receiver': hashed_receiver, 'sender signature': senderSign}
-            return verifiedTransaction
+            verifiedTransaction = {'sender': hashed_sender, 'amount': amount, 'receiver': hashed_receiver, 'sender signature': senderSign, 'id': transactionID, 'timestamp':timestamp}
+            verify3 = self.doubleSpendCheck(verifiedTransaction)
+            if verify3 == False:
+                return verifiedTransaction
+            else:
+                verifiedTransaction = {'sender': hashed_sender, 'amount': 0.0, 'receiver': hashed_receiver, 'sender signature': senderSign, 'id': transactionID, 'timestamp':timestamp}
+                return verifiedTransaction
 
 
-    def signTransaction(self, sender:str):
+    def signTransaction(self, transaction):
         """ signs transactions """
-        salt = b'\xef\x94\x06r\x05\xb6M\xa0\x85\x9e\x17k\x8a;v\xa7\x91v\x19l!\xf6&vo\xd1l\xe1X\x05\xe7\x98'
-        encodedSender = bytes(sender.encode())
-        # encodedReceiver = bytes(receiver.encode())
-        hashedsender = hashlib.scrypt(encodedSender, salt=salt, n=4, r=7, p=10).hex()
-        # hashedreceiver = hashlib.scrypt(encodedReceiver, salt=salt, n=4, r=7, p=10).hex()
-        hashedsender = hashlib.sha256(hashedsender).hexdigest()
-        # hashedreceiver = hashlib.sha256(hashedreceiver).hexdigest()
-        shaSender = str(pbkdf2_sha256.hash(hashedsender))
-        # shaReceiver = str(pbkdf2_sha256.hash(hashedreceiver))
-        shaSender = shaSender.replace('$pbkdf2-sha256$29000$', '')
-        # shaReceiver = shaReceiver.replace('$pbkdf2-sha256$29000$', '')
-        signatures = {'signature of sender': shaSender}
-        return signatures
+        signature = signatures.signTransaction(transaction)
+        return signature
 
     #P2p nodes
 

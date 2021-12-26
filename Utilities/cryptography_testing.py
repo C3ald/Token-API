@@ -149,11 +149,7 @@ class Ring_CT():
 
 	def calculate_number_signatures(self, blockchain):
 		""" Calculates the number of decoy transactions """
-		length_of_chain = len(blockchain[-1]['data'])
-		if length_of_chain > 5:
-			number_of_decoy_addr = 3
-		else:
-			number_of_decoy_addr = random.randint(4,5)
+		number_of_decoy_addr = random.randint(4,5)
 		return number_of_decoy_addr
 
 	def shuffle(self, ring_signitures):
@@ -171,6 +167,53 @@ class Ring_CT():
 		signatures = self.make_ring_sign(blockchain, primary_address)
 		new_transactions = self.shuffle(signatures)
 		return new_transactions
+
+
+
+
+class Signatures():
+	def __init__(self):
+		pass
+	
+	def gatherSendersAndReceivers(self, fulltransaction):
+		""" Gathers the senders and receivers to turn it into a signature for the block """
+		allsenders = fulltransaction['sender']
+		allreceivers = fulltransaction['receiver']
+		transactionID = fulltransaction['id']
+		timestamp = fulltransaction['timestamp']
+		data = allsenders + allreceivers + transactionID + timestamp
+		return data
+	
+	def makeSignatures(self, data):
+		""" Uses the data to make a signature """
+		combined_data = None
+		for info in data:
+			combined_data = combined_data + info
+		return combined_data
+	
+	def hashSignature(self, combined_data):
+		""" hashes the combined data """
+		salt = b'\xef\x94\x06r\x05\xb6M\xa0\x85\x9e\x17k\x8a;v\xa7\x91v\x19l!\xf6&vo\xd1l\xe1X\x05\xe7\x98'
+		encodedAddress = bytes(combined_data.encode())
+		hashedAddress = hashlib.scrypt(encodedAddress, salt=salt, n=4, r=7, p=10).hex()
+		shadata = hashlib.sha256(hashedAddress).hexdigest()
+		return shadata
+	
+	def encodeSignature(self, shadata):
+		""" hashes the signature asymmetrically  """
+		finalencodedAddress = str(pbkdf2_sha256.hash(shadata))
+		finalencodedAddress = finalencodedAddress.replace('$pbkdf2-sha256$29000$', '')
+		return finalencodedAddress
+
+	def signTransaction(self, transaction):
+		""" Signs the transaction """
+		gathered_data = self.gatherSendersAndReceivers(transaction)
+		combined_data = self.makeSignatures(gathered_data)
+		hasheddata = self.hashSignature(combined_data)
+		hasheddata = self.encodeSignature(hasheddata)
+		return hasheddata
+
+
 
 
 class primary_addresses():
@@ -313,7 +356,7 @@ class Check_Wallet_Balance():
 					for sender in senders:
 						amount = transaction['amount']
 						verify_wallet = self.verify_stealth_keys(sender, sender_receive_key)
-						verify2 = self.signiture_check(address=sender_receive_key, signature=sender_signature)
+						verify2 = self.verify_keys(sender_receive_key, sender_signature)
 						if verify_wallet == True and verify2 == True:
 							verify_double_spend = self.double_spend_check(stealth_key=sender, chain=blockchain)
 							if verify_double_spend == False:
@@ -348,17 +391,15 @@ class Check_Wallet_Balance():
 
 
 
-	def signiture_check(self,address, signature):
-		hashedAddress = self.sign_transactions(address)
-		valid = self.verify_keys(publickey=signature, privatekey=hashedAddress)
-		return valid
+		
 
-	def sign_transactions(self, address):
-		salt = b'\xef\x94\x06r\x05\xb6M\xa0\x85\x9e\x17k\x8a;v\xa7\x91v\x19l!\xf6&vo\xd1l\xe1X\x05\xe7\x98'
-		encodedAddress = bytes(address.encode())
-		hashedAddress = hashlib.scrypt(encodedAddress, salt=salt, n=4, r=7, p=10).hex()
-		hashedAddress = hashlib.sha256(hashedAddress).hexdigest()
-		return hashedAddress
+	def sign_transactions(self, transaction):
+		signature = Signatures()
+		data = signature.gatherSendersAndReceivers(transaction)
+		combined_data = signature.makeSignatures(data)
+		hashdata = signature.hashSignature(combined_data)
+		return hashdata
+
 
 class Decoy_addresses():
 	def __init__(self):
