@@ -179,16 +179,16 @@ class Signatures():
 		""" Gathers the senders and receivers to turn it into a signature for the block """
 		allsenders = fulltransaction['sender']
 		allreceivers = fulltransaction['receiver']
-		transactionID = fulltransaction['id']
-		timestamp = fulltransaction['timestamp']
+		transactionID = [fulltransaction['id']]
+		timestamp = [fulltransaction['timestamp']]
 		data = allsenders + allreceivers + transactionID + timestamp
 		return data
 	
 	def makeSignatures(self, data):
 		""" Uses the data to make a signature """
-		combined_data = None
+		combined_data = ''
 		for info in data:
-			combined_data = combined_data + info
+			combined_data = str(combined_data + str(info))
 		return combined_data
 	
 	def hashSignature(self, combined_data):
@@ -196,7 +196,7 @@ class Signatures():
 		salt = b'\xef\x94\x06r\x05\xb6M\xa0\x85\x9e\x17k\x8a;v\xa7\x91v\x19l!\xf6&vo\xd1l\xe1X\x05\xe7\x98'
 		encodedAddress = bytes(combined_data.encode())
 		hashedAddress = hashlib.scrypt(encodedAddress, salt=salt, n=4, r=7, p=10).hex()
-		shadata = hashlib.sha256(hashedAddress).hexdigest()
+		shadata = hashlib.sha256(hashedAddress.encode()).hexdigest()
 		return shadata
 	
 	def encodeSignature(self, shadata):
@@ -386,7 +386,10 @@ class Check_Wallet_Balance():
 	def verify_keys(self, publickey, privatekey):
 		full_publickey = '$pbkdf2-sha256$29000$'+publickey
 		# full_privatekey = '$pbkdf2-sha256$29000$'+privatekey
-		verify = pbkdf2_sha256.verify(privatekey, full_publickey)
+		try:
+			verify = pbkdf2_sha256.verify(privatekey, full_publickey)
+		except ValueError:
+			verify = False
 		return verify
 
 

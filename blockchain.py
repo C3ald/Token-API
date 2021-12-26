@@ -76,22 +76,25 @@ class Blockchain:
             # decoy = self.add_false_transactions()
             if len(self.chain) > 0:
                 for transaction in self.unconfirmed_transactions:
-                    self.transactions.append(self.verify_transactions(transaction))
-                for transaction in self.transactions:
-                    hashed_sender = str(transaction['sender'])
+                    validtransaction = self.verify_transactions(transaction)
+                    if validtransaction != None:
+                        self.transactions.append()
+                if len(self.transactions) > 0:
+                    for transaction in self.transactions:
+                        hashed_sender = transaction['sender']
                     # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
-                    hashed_receiver = str(transaction['receiver'])
-                    signature = str(transaction['sender signature'])
-                    transactionid = str(transaction['id'])
-                    timestamp = str(transaction['timestamp'])
+                        hashed_receiver = transaction['receiver']
+                        signature = str(transaction['sender signature'])
+                        transactionid = str(transaction['id'])
+                        timestamp = str(transaction['timestamp'])
                     # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-                    sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
-                    receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
-                    amount = transaction['amount']
-                    new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
-                    self.new_transactions.append(new_transaction)
+                        sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
+                        receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
+                        amount = transaction['amount']
+                        new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
+                        self.new_transactions.append(new_transaction)
                 
-                self.transactions = self.new_transactions
+                    self.transactions = self.new_transactions
                 sender = Decoy_addresses().decoy_keys()['publickey']
                 self.add_miner_transaction(sender=sender, receiver=forger, amount=miner_reward)
 
@@ -201,13 +204,13 @@ class Blockchain:
         hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
         hashed_receiver = str(pbkdf2_sha256.hash(receiver))
         hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-        senders = ring_ct.make_ring_sign(hashed_sender)
-        receivers = ring_ct.make_ring_sign(hashed_receiver)
+        senders = ring_ct.make_ring_sign(blockchain=self.chain, primary_address=hashed_sender)
+        receivers = ring_ct.make_ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
         transactionID = uuid1().hex
         timestamp = time.time()
         transactionforsigning = {'sender': senders, 'amount': amount, 'receiver': receivers, 'id': transactionID, 'timestamp': timestamp}
         transaction = self.signTransaction(transactionforsigning)
-        signsender = transaction['signature of sender']
+        signsender = transaction
         # signreceiver = transaction['signature of receiver']
         minertransaction = {'sender': senders,'amount': amount, 'receiver':receivers, 'sender signature': signsender, 'id': transactionID, 'timestamp': timestamp}
         self.transactions.append(minertransaction)
@@ -234,7 +237,7 @@ class Blockchain:
             verify1 = self.equals(transaction)
             verify2 = self.signaturecheck(transaction)
             if verify1 == True and verify2 == True:
-                self.unconfirmed_transactions.pop(transaction)
+                self.unconfirmed_transactions.remove(transaction)
         #         return True
         # return False
 
@@ -301,18 +304,12 @@ class Blockchain:
         # signature = self.signTransaction(addressofsender, receiver)
         # signatureofsender = signature['signature of sender']
         # signatureofreceiver = signature['signature of receiver']
-        unconfirmedTransaction = {
-            'sender send publickey':sendersendpublickey, 
-        'sender send privatekey': senderprivatekey, 
-        'sender address': senderviewkey, 
-        'receiver': receiver,
-        'amount': amount,
-        'id': uuid1(),
-        'timestamp': time.time()
-        }
-        self.unconfirmed_transactions.append(unconfirmedTransaction)
-        self.unconfirmed_transactions = set(self,unconfirmedTransaction)
-        self.add_unconfirmed_transaction = list(self.unconfirmed_transactions)
+        unconfirmedTransaction = {'sender send publickey':sendersendpublickey, 'sender send privatekey': senderprivatekey, 'sender address': senderviewkey, 'receiver': receiver,'amount': amount,'id': uuid1(),'timestamp': time.time()}
+        verify = self.doubleSpendCheck(unconfirmedTransaction)
+        if verify == False:
+            self.unconfirmed_transactions.append(unconfirmedTransaction)
+        # self.unconfirmed_transactions = set(self.unconfirmed_transactions)
+        # self.add_unconfirmed_transaction = list(self.unconfirmed_transactions)
         return unconfirmedTransaction
 
         # if len(self.unconfirmed_transactions) < 5:
@@ -345,13 +342,17 @@ class Blockchain:
         amount = transaction['amount']
         transactionID = transaction['id']
         timestamp = transaction['timestamp']
+        if amount > 0:
+            verify4 = True
+        else:
+            verify4 = False
         verify1 = Check_Wallet_Balance().verify_keys(publickey=senderSendPublickey, privatekey=senderSendPrivatekey)
         verify2 = Check_Wallet_Balance().verify_keys(publickey=senderviewkey, privatekey=senderSendPrivatekey)
         address = primary_addresses().make_primary_address(senderviewkey)
         balance = Check_Wallet_Balance().balance_check(public_view_key=senderviewkey, blockchain=self.chain)
         balance = balance['balance']
         newBalance = balance - amount
-        if verify1 == True and verify2 == True and newBalance >= 0:
+        if verify1 == True and verify2 == True and newBalance >= 0 and verify4 == True:
             hashed_sender = str(pbkdf2_sha256.hash(address))
             hashed_receiver = str(pbkdf2_sha256.hash(receiver))
             senderSign = self.signTransaction(transaction)
@@ -363,6 +364,8 @@ class Blockchain:
             else:
                 verifiedTransaction = {'sender': hashed_sender, 'amount': 0.0, 'receiver': hashed_receiver, 'sender signature': senderSign, 'id': transactionID, 'timestamp':timestamp}
                 return verifiedTransaction
+        else:
+            self.removeTransaction(transaction)
 
 
     def signTransaction(self, transaction):
@@ -371,6 +374,9 @@ class Blockchain:
         return signature
 
     #P2p nodes
+    def removeTransaction(self, transaction):
+        """ Removes invalid transactions """
+        self.unconfirmed_transactions.remove(transaction)
 
 
 
