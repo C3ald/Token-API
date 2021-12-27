@@ -71,32 +71,36 @@ class Blockchain:
     def create_block(self, proof, previous_hash, forger):
         """ Used to make a block """
         if len(self.chain) > 0:
-            self.new_transactions = []
-            miner_reward = algs.amount_change(self.chain)
+            valid = self.suspendAlgorithm(forger)
+            if valid == False:
+                self.new_transactions = []
+                miner_reward = algs.amount_change(self.chain)
             # decoy = self.add_false_transactions()
-            if len(self.chain) > 0:
-                for transaction in self.unconfirmed_transactions:
-                    validtransaction = self.verify_transactions(transaction)
-                    if validtransaction != None:
-                        self.transactions.append()
-                if len(self.transactions) > 0:
-                    for transaction in self.transactions:
-                        hashed_sender = transaction['sender']
-                    # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
-                        hashed_receiver = transaction['receiver']
-                        signature = str(transaction['sender signature'])
-                        transactionid = str(transaction['id'])
-                        timestamp = str(transaction['timestamp'])
-                    # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-                        sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
-                        receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
-                        amount = transaction['amount']
-                        new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
-                        self.new_transactions.append(new_transaction)
-                
-                    self.transactions = self.new_transactions
-                sender = Decoy_addresses().decoy_keys()['publickey']
-                self.add_miner_transaction(sender=sender, receiver=forger, amount=miner_reward)
+                if len(self.chain) > 0:
+                    for transaction in self.unconfirmed_transactions:
+                        validtransaction = self.verify_transactions(transaction)
+                        if validtransaction != None:
+                            self.transactions.append()
+                    if len(self.transactions) > 0:
+                        for transaction in self.transactions:
+                            hashed_sender = transaction['sender']
+                        # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
+                            hashed_receiver = transaction['receiver']
+                            signature = str(transaction['sender signature'])
+                            transactionid = str(transaction['id'])
+                            timestamp = str(transaction['timestamp'])
+                        # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
+                            sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
+                            receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
+                            amount = transaction['amount']
+                            new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
+                            self.new_transactions.append(new_transaction)
+
+                        self.transactions = self.new_transactions
+                    sender = Decoy_addresses().decoy_keys()['publickey']
+                    self.add_miner_transaction(sender=sender, receiver=forger, amount=miner_reward)
+            else:
+                return 'Address cannot forge block due to it being in the receiving end of a transaction in the most recent 20 blocks'
 
         block = {
             'index': len(self.chain) + 1,
@@ -268,6 +272,32 @@ class Blockchain:
                 return True
         return False
             
+
+
+    def suspendAlgorithm(self, address):
+        """ Checks to see if the address is reapeating in the blockchain, this is to prevent someone from owning too much of the blockchain and fight against large scale mining """
+        blockIndex = self.chain[-1]['index']
+        blockIndex = blockIndex - 20
+        if blockIndex >=0:
+            for block in self.chain[20:]:
+                for data in block['data']:
+                    for receiver in data['receiver']:
+                        stealthAddress = receiver
+                        verify = Check_Wallet_Balance().verify_keys(publickey=stealthAddress, privatekey=address)
+                        if verify == True:
+                            return True
+            return False
+        if blockIndex < 0:
+            for block in self.chain[1:]:
+                for data in block['data']:
+                    for receiver in data['receiver']:
+                        stealthAddress = receiver
+                        verify = Check_Wallet_Balance().verify_keys(publickey=stealthAddress, privatekey=address)
+                        if verify == True:
+                            return True
+            return False
+            
+
 
 
 

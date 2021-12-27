@@ -147,9 +147,9 @@ async def mine(keys:Mining):
         # stealth_key = pbkdf2_sha256.hash(str(keys.publickey))
     # decoy = decoy_addresses.decoy_transactions(amount)
         # create block
-    blockchain.create_block(proof=proof, previous_hash=prev_hash, forger=keys.address)
+    message = blockchain.create_block(proof=proof, previous_hash=prev_hash, forger=keys.address)
         #returns the last block in the chain
-    return {'message': blockchain.chain[-1]}
+    return {'message': message}
     # else:
     #     return "no wallet detected"
 
