@@ -134,17 +134,20 @@ class Blockchain:
 
     def update_chain(self, block:dict):
         """ Updates the chain """
-        new_chain = self.chain
-        new_chain.append(block)
-        if len(new_chain) > len(self.chain):
-            valid = self.is_chain_valid(chain=new_chain)
-            self.checkTransactions(block)
-            if valid == True:
-                self.add_data(data=self.chain)
-                self.chain = new_chain
-            return self.chain
-        else:
-            return self.chain
+        lengthofunconfirmedtransactions = len(self.unconfirmed_transactions)
+        lengthofblocktransactions = len(block['data'])
+        if lengthofunconfirmedtransactions + 1 == lengthofblocktransactions:
+            new_chain = self.chain
+            new_chain.append(block)
+            if len(new_chain) > len(self.chain):
+                valid = self.is_chain_valid(chain=new_chain)
+                self.checkTransactions(block)
+                if valid == True:
+                    self.add_data(data=self.chain)
+                    self.chain = new_chain
+                return self.chain
+            else:
+                return self.chain
 
     def proof_of_work(self, previous_proof):
         """ This is used for mining """
