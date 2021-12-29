@@ -314,11 +314,9 @@ async def check_balance(wallet:Wallet_public):
 async def insert_chain(chain:Blockchain):
     """ replace the chain if all nodes are down or if node has a 
     firewall preventing get requests from web servers """
-    if getsizeof(chain.block) < 524288 or getsizeof(chain.block) == 524288:
-        updated_chain = blockchain.update_chain(new_chain=chain.block)
-        return updated_chain
-    else:
-        return 'block is too large!!'
+    updated_chain = blockchain.update_chain(new_chain=chain.block)
+    return updated_chain
+
     # if is_valid == True:
     #     blockchain.chain
     #     return chain
