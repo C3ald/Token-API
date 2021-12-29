@@ -136,7 +136,7 @@ class Blockchain:
         """ Updates the chain """
         lengthofunconfirmedtransactions = len(self.unconfirmed_transactions)
         lengthofblocktransactions = len(block['data'])
-        if lengthofunconfirmedtransactions + 1 == lengthofblocktransactions or lengthofblocktransactions > lengthofunconfirmedtransactions:
+        if lengthofunconfirmedtransactions + 1 == lengthofblocktransactions:
             new_chain = self.chain
             new_chain.append(block)
             if len(new_chain) > len(self.chain):
