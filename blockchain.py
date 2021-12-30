@@ -150,8 +150,11 @@ class Blockchain:
                 return self.chain
         else:
             self.replace_chain()
-            return self.chain
+        self.unconfirmed_transactions = []
+        self.add_data(data=self.unconfirmed_transactions, DataBase=UNconfirmed_transactions)
+        return self.chain
 
+    
     def proof_of_work(self, previous_proof):
         """ This is used for mining """
         new_proof = 1
