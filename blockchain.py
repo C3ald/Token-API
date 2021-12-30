@@ -50,7 +50,7 @@ class Blockchain:
 
 
     def add_data(self, data, DataBase):
-        """ This adds data """
+        """ This adds data to the database that is selected """
         # data = self.chain
         # print(type(data))
         DataBase.truncate()
@@ -59,17 +59,19 @@ class Blockchain:
         return 'data has been added!!'
     
     def read_data(self, DataBase):
+        """ Reads all the data in the selected database """
         data = DataBase.all()
         return data
 	
     def update_nodes(self, node):
-        """ Updates the list of nodes on one node """
+        """ Updates the list of nodes on one node to prevent loops when announcing new nodes on the network"""
         self.nodes.append(node)
         self.add_data(data=self.nodes, DataBase=NODES)
         return self.nodes
 
     def create_block(self, proof, previous_hash, forger):
-        """ Used to make a block """
+        """ Used to make a block and when a block is being made the transactions are verified, invalid transactions are removed from the list of 
+        transactions, the list of transactions resets. When the block is added it is announced to all the nodes as a new block """
         if len(self.chain) > 0:
             valid = self.suspendAlgorithm(forger)
             if valid == False:
@@ -117,13 +119,13 @@ class Blockchain:
     
 
     def get_prev_block(self):
-        """ get the previous block """
+        """ get the previous block on the current blockchain """
         return self.chain[-1]
     
 
 
     def post_chain(self, block):
-        """ sends the new chain to all nodes """
+        """ sends the new block to all nodes """
         for node in self.nodes:
             chain = block
             json = {'blockchain':chain}
@@ -133,10 +135,10 @@ class Blockchain:
         return 'chain is updated among all nodes'
 
     def update_chain(self, block:dict):
-        """ Updates the chain """
+        """ Updates the chain and checks if the new block is valid """
         lengthofunconfirmedtransactions = len(self.unconfirmed_transactions)
         lengthofblocktransactions = len(block['data'])
-        if lengthofunconfirmedtransactions + 1 == lengthofblocktransactions:
+        if lengthofunconfirmedtransactions < lengthofblocktransactions:
             new_chain = self.chain
             new_chain.append(block)
             if len(new_chain) > len(self.chain):
@@ -156,7 +158,7 @@ class Blockchain:
 
     
     def proof_of_work(self, previous_proof):
-        """ This is used for mining """
+        """ This is used for mining, the proof of work algorithm """
         new_proof = 1
         check_proof = False
         algs.difficulty_increase(chain=self.chain, nodes=self.nodes)
@@ -184,13 +186,13 @@ class Blockchain:
         return transactions
 
     def hash(self, block):
-        """This is used to hash a block"""
+        """This is used to hash a block using sha256"""
         encoded = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(encoded).hexdigest()
 
 
     def is_chain_valid(self, chain):
-        """Checks if the chain is valid"""
+        """Checks if the chain is valid with checking the previous hash and the proof"""
         previous_block = chain[0]
         block_index = 1
         algs.difficulty_increase(chain=chain, nodes=self.nodes)
@@ -212,7 +214,7 @@ class Blockchain:
 
 
     def add_miner_transaction(self, sender:str, receiver:str, amount:float):
-        """ This is used to send or exchange currencies """
+        """ This is used to add miner transactions """
         hashed_sender = str(pbkdf2_sha256.hash(sender))
         hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
         hashed_receiver = str(pbkdf2_sha256.hash(receiver))
@@ -245,17 +247,21 @@ class Blockchain:
     #         for transaction in self.unconfirmed_transactions:
 
     def checkTransactions(self, block):
-        """ checks if transaction is in new block """
+        """ checks if a transaction is in new block """
+        numOfTransactionsInBlock = 0
         for transaction in block['data']:
             verify1 = self.equals(transaction)
             verify2 = self.signaturecheck(transaction)
             if verify1 == True and verify2 == True:
                 self.unconfirmed_transactions.remove(transaction)
+                numOfTransactionsInBlock = numOfTransactionsInBlock + 1
+        return numOfTransactionsInBlock
+                
         #         return True
         # return False
 
     def doubleSpendCheck(self, transaction):
-        """ checks for double spending """
+        """ checks for double spending in the block"""
         verify = self.equals(transaction)
         verify2 = self.timeStampCheck(transaction)
         if verify == True or verify2 == True:
@@ -265,7 +271,7 @@ class Blockchain:
 
 
     def equals(self, transaction):
-        """ checks for repeat ids """
+        """ checks for repeat transcation ids in the transaction """
         for uncontransaction in self.unconfirmed_transactions:
             transactionID = transaction['id']
             unconfirmedtransactionID = uncontransaction['id']
@@ -274,6 +280,7 @@ class Blockchain:
         return False
 
     def timeStampCheck(self, transaction):
+        """ Checks for a reapeat timestamp in the transaction """
         for uncontransaction in self.unconfirmed_transactions:
             unconfirmedtimestamp = uncontransaction['timestamp']
             transactiontimestamp = transaction['timestamp']
@@ -284,7 +291,8 @@ class Blockchain:
 
 
     def suspendAlgorithm(self, address):
-        """ Checks to see if the address is reapeating in the blockchain, this is to prevent someone from owning too much of the blockchain and fight against large scale mining """
+        """ Checks to see if the address is reapeating in the blockchain, this is to prevent someone from owning too 
+        much of the blockchain and fight against large scale mining and 51% attacks """
         blockIndex = self.chain[-1]['index']
         blockIndex = blockIndex - 20
         if blockIndex >=0:
@@ -338,7 +346,7 @@ class Blockchain:
 
     """ to prevent loops in the network when adding transactions """
     def add_unconfirmed_transaction(self, senderprivatekey:str, senderviewkey:str, sendersendpublickey, receiver, amount:float):
-        """ This is used to send or exchange currencies """
+        """ This is used to add transactions so they can be verified """
         # addressofsender = primary_addresses().make_primary_address(senderviewkey)
         # signature = self.signTransaction(addressofsender, receiver)
         # signatureofsender = signature['signature of sender']
@@ -444,7 +452,7 @@ class Blockchain:
 
 
     def replace_chain(self):
-        """ This replaces the chain """
+        """ This replaces the chain and checks if it is valid """
         network = self.nodes
         if len(self.nodes) == 0:
             return {'message': 'add some nodes to get the latest chain','blockchain': self.chain}
