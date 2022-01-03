@@ -14,6 +14,7 @@ from tinydb import TinyDB, Query
 #git add .
 #git commit -m "Message"
 #git push
+import sys
 algs = Algs()
 ring_ct = Ring_CT()
 decoy_transactions = Decoy_addresses()
@@ -21,6 +22,7 @@ DB = TinyDB('db_blockchain.json')
 NODES = TinyDB('nodes.json')
 UNconfirmed_transactions = TinyDB('unconfirmed_transactions.json')
 signatures = Signatures()
+
 
 class Blockchain:
     """ the blockchain class """
@@ -78,27 +80,32 @@ class Blockchain:
                 self.new_transactions = []
                 miner_reward = algs.amount_change(self.chain)
             # decoy = self.add_false_transactions()
+                transactionlist = []
                 if len(self.chain) > 0:
                     for transaction in self.unconfirmed_transactions:
                         validtransaction = self.verify_transactions(transaction)
                         if validtransaction != None:
                             self.transactions.append()
                     if len(self.transactions) > 0:
+                        blocksizelimit = False
                         for transaction in self.transactions:
-                            hashed_sender = transaction['sender']
+                            if blocksizelimit(transactionlist) == False:
+                                hashed_sender = transaction['sender']
                         # hashed_sender = hashed_sender.replace('$pbkdf2-sha256$29000$', '')
-                            hashed_receiver = transaction['receiver']
-                            signature = str(transaction['sender signature'])
-                            transactionid = str(transaction['id'])
-                            timestamp = str(transaction['timestamp'])
+                                hashed_receiver = transaction['receiver']
+                                signature = str(transaction['sender signature'])
+                                transactionid = str(transaction['id'])
+                                timestamp = str(transaction['timestamp'])
                         # hashed_receiver = hashed_receiver.replace('$pbkdf2-sha256$29000$', '')
-                            sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
-                            receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
-                            amount = transaction['amount']
-                            new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
-                            self.new_transactions.append(new_transaction)
-
-                        self.transactions = self.new_transactions
+                                sender_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_sender)
+                                receiver_sign = ring_ct.ring_sign(blockchain=self.chain, primary_address=hashed_receiver)
+                                amount = transaction['amount']
+                                new_transaction = {'sender': sender_sign,'amount': amount, 'receiver':receiver_sign, 'sender signature': signature, 'id': transactionid, 'timestamp': timestamp}
+                                transactionlist.append(new_transaction)
+                                self.new_transactions.append(new_transaction)
+                                self.transactions = self.new_transactions
+                            else:
+                                break
                     sender = Decoy_addresses().decoy_keys()['publickey']
                     self.add_miner_transaction(sender=sender, receiver=forger, amount=miner_reward)
             else:
@@ -140,11 +147,12 @@ class Blockchain:
         lengthofblocktransactions = len(block['data'])
         if lengthofunconfirmedtransactions < lengthofblocktransactions:
             new_chain = self.chain
+            sizeCheck = self.recevBlockCheckSize(block=block)
             new_chain.append(block)
             if len(new_chain) > len(self.chain):
                 valid = self.is_chain_valid(chain=new_chain)
                 self.checkTransactions(block)
-                if valid == True:
+                if valid == True and sizeCheck == True:
                     self.add_data(data=self.chain)
                     self.chain = new_chain
                 return self.chain
@@ -189,6 +197,41 @@ class Blockchain:
         """This is used to hash a block using sha256"""
         encoded = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(encoded).hexdigest()
+
+    def blockSizeCheck(self, transactions:list):
+        """ Checks the block size of blocks that haven't been created yet """
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': str(datetime.datetime.utcnow()),
+            'proof': random.randint(200,1000000000000),
+            'previous_hash': hashlib.sha256(self.chain[-1].encode()).hexdigest(),
+            'data': transactions + transactions[-1]
+        }
+        # sizeofNewblock = sys.getsizeof(block)
+        size_check = self.dynamicSizeLimit(block)
+        return size_check
+
+
+    def recevBlockCheckSize(self, block):
+        """ Checks block size of a newly made block """
+        sizeofblock = self.dynamicSizeLimit(block)
+        return sizeofblock
+    
+    def dynamicSizeLimit(self, Newblock):
+        """ Checks using the newest 100 blocks' size """
+        sizeofblock = 0
+        if len(self.chain) >= 20:
+            newest100blocks = self.chain[-20:]
+        else:
+            newest100blocks = self.chain
+        for block in newest100blocks:
+            sizeofblock = sys.getsizeof(block) + sizeofblock
+        mean = sizeofblock / 20
+        times2 = mean * 2
+        if sys.getsizeof(Newblock) <= times2:
+            return True
+        else:
+            return False
 
 
     def is_chain_valid(self, chain):
