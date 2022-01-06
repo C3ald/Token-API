@@ -51,7 +51,11 @@ tags_metadata = [
     'description': 'mining', 
 
     'name': 'nodes',
-    'description': 'adding nodes and replacing the chain'
+    'description': 'adding nodes and replacing the chain',
+
+
+    'name': 'contracts',
+    'description': 'smart contracts on the blockchain'
     }]
 
 # CONSTANTS
@@ -89,6 +93,26 @@ class Transaction(BaseModel):
     amount: float
 
 
+
+class AddTransaction(BaseModel):
+    sender_public_send_key: str
+    sender_private_send_key: str
+    sender_view_key: str
+    receiver: str
+    transactionID: str
+    timestamp: str
+    amount: float
+    transactiontype: str
+
+
+class Contract(BaseModel):
+    sender_public_send_key: str
+    sender_private_send_key: str
+    sender_view_key: str
+    receiver: str
+    contractbinary: bytes
+
+
 class Walletkey(BaseModel):
     publickey: str
     privatekey: str
@@ -121,6 +145,22 @@ class EncryptedTransaction(BaseModel):
 async def index():
     """ returns index page """ 
     return "see /docs for the api"
+
+
+@app.get('/add_contract', tags=['contracts'])
+async def addContract(contractTransaction: Contract):
+    """ Use this to add smart contracts """
+    senderPublicKey = contractTransaction.sender_public_send_key
+    senderPrivateKey = contractTransaction.sender_private_send_key
+    receiver = contractTransaction.receiver
+    senderViewKey = contractTransaction.sender_view_key
+    contractdata = contractTransaction.contractbinary
+    contract = blockchain.add_smartContract(senderprivatekey= senderPrivateKey,
+            sendersendpublickey= senderPublicKey,
+            senderviewkey= senderViewKey,
+            receiver= receiver,
+            compiledcontract=contractdata)
+    return {'message': contract}
 
 
 @app.get("/get_the_chain", tags=['information'])
@@ -166,19 +206,22 @@ async def is_valid():
 
 
 @app.post("/add_transaction/", tags=['transaction'])
-async def add_transaction(transaction: Transaction):
+async def add_transaction(transaction: AddTransaction):
     """ Allows transactions to be added to the chain from nodes"""
     senderpublicsendkey = transaction.sender_public_send_key
     senderprivatesendkey = transaction.sender_private_send_key
     senderviewkey = transaction.sender_view_key
     receiver = transaction.receiver
     amount = transaction.amount
-    new_transaction = blockchain.add_unconfirmed_transaction(senderprivatekey=senderprivatesendkey, 
-    sendersendpublickey=senderpublicsendkey, 
-    receiver=receiver, 
-    senderviewkey=senderviewkey, 
-    amount=amount)
-    blockchain.broadcast_transaction(transaction=new_transaction)
+    transactionid = transaction.transactionID
+    new_transaction = blockchain.add_transaction(
+        senderprivatekey=senderprivatesendkey,
+        sendersendpublickey=senderpublicsendkey,
+        senderviewkey=senderviewkey,
+        receiver=receiver,
+        amount=amount,
+        transactionID=transactionid
+    )
     result = 'transaction has been added and is awaiting verification'
     return result
 
