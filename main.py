@@ -147,7 +147,7 @@ async def index():
     return "see /docs for the api"
 
 
-@app.get('/add_contract', tags=['contracts'])
+@app.post('/add_contract', tags=['contracts'])
 async def addContract(contractTransaction: Contract):
     """ Use this to add smart contracts """
     senderPublicKey = contractTransaction.sender_public_send_key
